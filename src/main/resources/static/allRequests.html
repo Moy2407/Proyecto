@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <title>ALL REQUESTS</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+    <nav>
+        <ul>
+            <li><a href="#">All Requests</a></li>
+            <li><a href="request.html">Request</a></li>
+        </ul>
+    </nav>
+
+</header>
+<h2 style="color: darkgreen">See all requests</h2>
+
+<div class="mb-3 mt-3">
+    <label for="bookName" class="form-label">Enter finding book name:</label>
+    <input type="text" class="form-control" id="bookName" placeholder="Enter book name" name="bookName">
+    <button class="btn btn-primary" onclick="findBook()">search by name</button>
+    <button class="btn" onclick="fetchDataAndPopulateTable(url)">clear filter</button>
+</div>
+
+
+<table id="dataTable" class="table table-dark table-striped">
+    <thead>
+    <tr>
+        <th>Request</th>
+        <th>Book Name</th>
+        <th>Author</th>
+        <th>Category</th>
+        <th>Editorial</th>
+        <th>Your Email</th>
+        <th>Options</th>
+    </tr>
+    </thead>
+    <tbody id="tableBody">
+    </tbody>
+</table>
+
+<script>
+
+    function findBook() {
+        let findingBookName  = document.getElementById("bookName").value;
+
+        const findingBookURL = "http://localhost:8080/book/find-by-name?name=" + findingBookName;
+        fetchDataAndPopulateTable(findingBookURL);
+
+    }
+    // Function to fetch JSON data from URL and populate table
+    async function fetchDataAndPopulateTable(url) {
+        try {
+            const response = await fetch(url);
+            const books = await response.json();
+
+            const tableBody = document.getElementById("tableBody");
+            tableBody.innerHTML = ''; // Clear existing table data
+
+            try{
+                books.forEach(currentBook => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                    <td>${currentBook.request}</td>
+                    <td>${currentBook.name}</td>
+                    <td>${currentBook.author}</td>
+                    <td>${currentBook.category}</td>
+                    <td>${currentBook.editorial}</td>
+                    <td>${currentBook.email}</td>
+                    <td><button type="button" id="${currentBook.request}" onclick="deleteBookButton(${currentBook.request})" class="btn btn-danger">Delete</button>
+                    <button type="button" onclick="editBookButton('${currentBook.request}')" class="btn btn-warning">Edit</button></td>
+
+                `;
+                    row.setAttribute("id",currentBook.request);
+
+                    tableBody.appendChild(row);
+                });
+            }catch (e){
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${books.request}</td>
+                    <td>${books.name}</td>
+                    <td>${books.author}</td>
+                    <td>${books.category}</td>
+                    <td>${books.editorial}</td>
+                    <td>${books.email}</td>
+                    <td><button type="button" id="${currentBook.request}" onclick="deleteBookButton(${currentBook.request})" class="btn btn-danger">Delete</button></td>
+                    <button type="button" onclick="editBookButton('${currentBook.request}')" class="btn btn-warning">Edit</button>
+                `;
+                row.setAttribute("id",books.request);
+                tableBody.appendChild(row);
+            }
+
+        } catch (error) {
+            console.error("Error fetching data:", error);
+        }
+    }
+
+    // URL from where to fetch JSON data
+    const url = "http://localhost:8080/book"; // Replace with your JSON URL
+
+    // Call the function to fetch data and populate table
+    fetchDataAndPopulateTable(url);
+
+
+    function deleteBook(request) {
+        //cuando ya estemos seguros de que se quiere eliminar.
+        const deleteUrl = "http://localhost:8080/book/delete-book-by-request?request=" + request;
+
+        fetch(deleteUrl, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response;
+            })
+            .then(data => {
+                console.log('Item deleted successfully:', data);
+                fetchDataAndPopulateTable(url);
+            })
+            .catch(error => {
+                console.error('There was a problem with the fetch operation:', error);
+                // Handle errors, show an error message, or retry the operation
+            });
+    }
+
+    function deleteBookButton(request) {
+
+        if(confirm("Are you sure to delete the request="+request)){
+            deleteBook(request);
+        }else{
+            console.log("No changes were made")
+        }
+    }
+
+    function editBookButton(request){
+        // cambiar las propiedades de la fila para poder editar
+        let row = document.getElementById(request);
+
+        let nameCell = row.children.item(1);
+        let authorCell = row.children.item(2);
+        let categoryCell = row.children.item(3);
+        let editorialCell = row.children.item(4);
+        let emailCell = row.children.item(5);
+
+        nameCell.setAttribute("contenteditable","true");
+        authorCell.setAttribute("contenteditable","true");
+        categoryCell.setAttribute("contenteditable","true");
+        editorialCell.setAttribute("contenteditable","true");
+        emailCell.setAttribute("contenteditable","true");
+
+        row.children.item(1).focus();
+        let editButton = row.children.item(6).children.item(1);
+        editButton.setAttribute("class","btn btn-success");
+        editButton.innerHTML = "Save";
+        // cuando el usuario presione nuevamente el botón de guardar, debemos de ir a la función guardar
+        editButton.setAttribute("onClick","saveBook("+request+")");
+    }
+
+    function saveBook(request) {
+        let row = document.getElementById(request);
+
+        let nameCell = row.children.item(1);
+        let authorCell = row.children.item(2);
+        let categoryCell = row.children.item(3);
+        let editorialCell = row.children.item(4);
+        let emailCell = row.children.item(5);
+
+        const editBook = {
+            request : request,
+            name : nameCell.textContent,
+            author : authorCell.textContent,
+            category : categoryCell.textContent,
+            editorial : editorialCell.textContent,
+            email : emailCell.textContent
+        }
+
+        const updateUrl = 'http://localhost:8080/book';
+
+        const requestOptions = {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+                // Add any other headers if needed
+            },
+            body: JSON.stringify(editBook)
+        };
+
+        // Realizar la solicitud PUT
+        fetch(updateUrl, requestOptions)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`¡Error HTTP! Estado: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Success:', data);
+                fetchDataAndPopulateTable(url);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                // Handle error here
+            });
+    }
+
+
+</script>
+</body>
+</html>
